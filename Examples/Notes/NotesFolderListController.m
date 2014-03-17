@@ -119,7 +119,7 @@
                 Alert(@"Error", @"There was an error opening your note");
                 return;
             }
-            controller = [[NoteController alloc] initWithFile:file];
+            controller = [[NoteController alloc] initWithFile:file filesystem:_filesystem];
         }
 
         [self.navigationController pushViewController:controller animated:YES];
@@ -269,7 +269,8 @@ NSInteger sortFileInfos(id obj1, id obj2, void *ctx) {
         if (!file) {
             Alert(@"Unable to create note", @"An error has occurred");
         } else {
-            NoteController *controller = [[NoteController alloc] initWithFile:file];
+            NoteController *controller = [[NoteController alloc] initWithFile:file filesystem:_filesystem];
+            controller.newFile = YES;
             [self.navigationController pushViewController:controller animated:YES];
         }
     } else {

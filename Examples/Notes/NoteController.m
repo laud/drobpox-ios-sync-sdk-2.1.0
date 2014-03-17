@@ -3,6 +3,7 @@
 
 @interface NoteController () <UITextViewDelegate>
 
+@property (nonatomic, retain) DBFilesystem *filesystem;
 @property (nonatomic, retain) UIActivityIndicatorView *activityIndicator;
 @property (nonatomic, retain) DBFile *file;
 @property (nonatomic, retain) UITextView *textView;
@@ -14,10 +15,11 @@
 
 @implementation NoteController
 
-- (id)initWithFile:(DBFile *)file {
+- (id)initWithFile:(DBFile *)file filesystem:(DBFilesystem *)filesystem{
     if (!(self = [super init])) return nil;
 
     _file = file;
+    _filesystem = filesystem;
     self.navigationItem.title = [_file.info.path name];
     self.navigationItem.rightBarButtonItem =
         [[UIBarButtonItem alloc]
@@ -60,7 +62,11 @@
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-
+    
+    // This is a new file, so we want to rename the new file to be the first 30 characters of the note
+    if (self.newFile) {
+        [self renameFile];
+    }
     [_file removeObserver:self];
     [self saveChanges];
 }
@@ -116,6 +122,33 @@
     [_file update:nil];
     _textViewLoaded = NO;
     [self reload];
+}
+
+// Helper method to grab the first 30-or-so characters of the first line
+- (NSString *)firstLineOfTextTruncated
+{
+    NSString *firstLine = [[self.textView.text componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]] objectAtIndex:0];
+    firstLine = [firstLine stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    NSRange stringRange = {0, MIN([firstLine length], 30)};
+    stringRange = [firstLine rangeOfComposedCharacterSequencesForRange:stringRange];
+    return [firstLine substringWithRange:stringRange];
+}
+
+// Simple implementation of a file move
+- (void)renameFile
+{
+    NSString *fileName = [self firstLineOfTextTruncated];
+    fileName = [NSString stringWithFormat:@"%@.txt", fileName];
+    if ([fileName isEqualToString:_file.info.path.name]) return;
+
+    DBPath *oldPath = _file.info.path;
+    DBPath *newPath = [_file.info.path.parent childPath:fileName];
+    
+    DBError *e = nil;
+    [_filesystem movePath:oldPath toPath:newPath error:&e];
+    if (e) {
+        NSLog(@"Error %@", e);
+    }
 }
 
 @end
